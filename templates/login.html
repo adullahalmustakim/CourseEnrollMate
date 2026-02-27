@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+<div class="login-container">
+
+    <h3>Enter your login credentials</h3>
+
+    <form method="POST">
+
+        <label>Username:</label>
+        <input type="text" name="username" placeholder="Enter your Username" required>
+
+        <label>Password:</label>
+        <input type="password" name="password" placeholder="Enter your Password" required>
+
+        <label>Login As:</label>
+        <select name="role">
+            <option value="student">Student</option>
+            <option value="admin">Admin</option>
+        </select>
+
+        <button type="submit">Submit</button>
+
+    </form>
+
+    <p class="register">
+        Not registered? <a href="/register">Create an account</a>
+    </p>
+
+</div>
+
+{% endblock %}

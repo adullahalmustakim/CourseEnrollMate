@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+<h2>Student Dashboard</h2>
+
+{% if "username" in session %}
+<p>Welcome {{ session["username"] }}!</p>
+{% else %}
+<p>You are not logged in. Please log in</p>
+{% endif %}
+
+<p>You can enroll in courses here.</p>
+
+<a href="/logout">Logout</a>
+
+{% endblock %}
