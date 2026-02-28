@@ -205,6 +205,30 @@ def delete_course(id):
 
     return redirect(url_for("manage_courses"))
 
+@app.route("/manage_credit_hours", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def manage_credit_hours():
+
+    conn = get_db_connection()
+
+    if request.method == "POST":
+        course_id = request.form["course_id"]
+        credit_hours = request.form["credit_hours"]
+
+        conn.execute(
+            "UPDATE courses SET credit_hours=? WHERE id=?",
+            (credit_hours, course_id)
+        )
+        conn.commit()
+
+        return redirect(url_for("manage_credit_hours"))
+
+    courses = conn.execute("SELECT * FROM courses").fetchall()
+    conn.close()
+
+    return render_template("manage_credit_hours.html", courses=courses)
+
 @app.route("/logout")
 def logout():
     session.clear()
