@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+<div class="login-container">
+
+    <h3>Add New Course</h3>
+
+    <form method="POST">
+         <label>Course Code:</label>
+        <input type="text" name="course_code" placeholder="Course Code" required>
+        <label>Course Title:</label>
+        <input type="text" name="course_title" placeholder="Course Title" required>
+        <label>Course Description:</label>
+        <textarea name="course_description" placeholder="Course Description"></textarea>
+        <label>Credit Hours:</label>
+        <input type="number" name="credit_hours" placeholder="Credit Hours" required>
+
+        <button type="submit">Add Course</button>
+
+    </form>
+</div>
+{% endblock %}

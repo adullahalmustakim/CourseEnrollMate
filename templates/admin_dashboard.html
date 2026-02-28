@@ -2,8 +2,40 @@
 
 {% block body %}
 
+<div class="dashboard">
+
 <h2>Admin Dashboard</h2>
-<p>Welcome Admin!</p>
-<p>You can manage courses here.</p>
-<a href="/">Logout</a>
+
+<p>Welcome back, {{ session.username }} 👋</p>
+
+<div class="stats">
+    <div class="card">
+        <h3>{{ total_courses }}</h3>
+        <p>Total Courses</p>
+    </div>
+
+    <div class="card">
+        <h3>{{ total_students }}</h3>
+        <p>Total Students</p>
+    </div>
+
+    <div class="card">
+        <h3>{{ total_admins }}</h3>
+        <p>Total Admins</p>
+    </div>
+
+</div>
+
+<div class="actions">
+
+    <a href="/add_course">Add Course</a>
+
+    <a href="/manage_courses">Manage Courses</a>
+
+    <a href="/logout" class="logout">Logout</a>
+
+</div>
+
+</div>
+
 {% endblock %}

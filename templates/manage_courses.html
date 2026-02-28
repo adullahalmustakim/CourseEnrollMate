@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+<div class="table-container">
+
+<h2>Manage Courses</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Code</th>
+            <th>Title</th>
+            <th>Credits</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+{% for course in courses %}
+    <tr>
+        <td>{{ course["course_code"] }}</td>
+        <td>{{ course["course_title"] }}</td>
+        <td>{{ course["credit_hours"] }}</td>
+
+        <td>
+            <a href="/edit_course/{{ course['id'] }}" class="edit-btn">Edit</a>
+            <a href="/delete_course/{{ course['id'] }}" class="delete-btn">Delete</a>
+        </td>
+    </tr>
+{% endfor %}
+
+    </tbody>
+</table>
+
+</div>
+
+{% endblock %}

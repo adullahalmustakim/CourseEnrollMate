@@ -8,6 +8,7 @@ import sqlite3
 def get_db_connection():
     conn = sqlite3.connect("courseenrollmate.db")
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
@@ -63,11 +64,9 @@ def register():
 
         role = request.form["role"]
 
-        # Check passwords first
         if password != confirm_password:
             return "Passwords do not match"
 
-        # Hash password AFTER checking
         hashed_password = generate_password_hash(password)
 
         conn = get_db_connection()
@@ -95,7 +94,116 @@ def student_dashboard():
 @login_required
 @role_required("admin")
 def admin_dashboard():
-    return render_template("admin_dashboard.html")
+
+    conn = get_db_connection()
+
+    total_courses = conn.execute(
+        "SELECT COUNT(*) FROM courses"
+    ).fetchone()[0]
+
+    total_students = conn.execute(
+        "SELECT COUNT(*) FROM users WHERE role='student'"
+    ).fetchone()[0]
+
+    total_admins = conn.execute(
+        "SELECT COUNT(*) FROM users WHERE role='admin'"
+    ).fetchone()[0]
+
+    conn.close()
+
+    return render_template(
+        "admin_dashboard.html", total_courses=total_courses, total_students=total_students, total_admins=total_admins
+    )
+
+@app.route("/add_course", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def add_course():
+
+    if request.method == "POST":
+
+        course_code = request.form["course_code"]
+        course_title = request.form["course_title"]
+        course_description = request.form["course_description"]
+        credit_hours = request.form["credit_hours"]
+
+        conn = get_db_connection()
+
+        conn.execute(
+            "INSERT INTO courses (course_code, course_title, course_description, credit_hours) VALUES (?, ?, ?, ?)",
+            (course_code, course_title, course_description, credit_hours)
+        )
+
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("manage_courses"))
+
+    return render_template("add_course.html")
+
+@app.route("/manage_courses")
+@login_required
+@role_required("admin")
+def manage_courses():
+
+    conn = get_db_connection()
+
+    courses = conn.execute("SELECT * FROM courses").fetchall()
+
+    conn.close()
+
+    return render_template("manage_courses.html", courses=courses)
+
+@app.route("/edit_course/<int:id>", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def edit_course(id):
+
+    conn = get_db_connection()
+
+    course = conn.execute(
+        "SELECT * FROM courses WHERE id=?",
+        (id,)
+    ).fetchone()
+
+    if request.method == "POST":
+
+        course_code = request.form["course_code"]
+        course_title = request.form["course_title"]
+        course_description = request.form["course_description"]
+
+        conn.execute(
+            """UPDATE courses
+               SET course_code=?, course_title=?, course_description=?
+               WHERE id=?""",
+            (course_code, course_title, course_description, id)
+        )
+
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("manage_courses"))
+
+    conn.close()
+
+    return render_template("edit_course.html", course=course)
+
+@app.route("/delete_course/<int:id>")
+@login_required
+@role_required("admin")
+def delete_course(id):
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "DELETE FROM courses WHERE id=?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("manage_courses"))
 
 @app.route("/logout")
 def logout():
