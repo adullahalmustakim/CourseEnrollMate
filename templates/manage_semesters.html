@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+<div class="login-container">
+    <h3>Semester Management</h3>
+
+    <form method="POST">
+
+        <label>Semester Name</label>
+        <input type="text" name="semester_name" required>
+
+        <label>Start Date</label>
+        <input type="date" name="start_date" required>
+
+        <label>End Date</label>
+        <input type="date" name="end_date" required>
+
+        <button type="submit">Create Semester</button>
+
+    </form>
+
+</div>
+
+<hr>
+
+<div class="table-container">
+    <h2>Existing Semesters</h2>
+    <table>
+
+        <tr>
+            <th>Name</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+
+    {% for semester in semesters %}
+
+        <tr>
+
+            <td>{{ semester['semester_name'] }}</td>
+            <td>{{ semester['start_date'] }}</td>
+            <td>{{ semester['end_date'] }}</td>
+            <td>{{ semester['status'] }}</td>
+
+        <td>
+
+            <a href="/activate_semester/{{ semester['id'] }}"> Activate </a>
+
+            <a href="/delete_semester/{{ semester['id'] }}"> Delete </a>
+
+        </td>
+
+        </tr>
+
+    {% endfor %}
+
+    </table>
+</div>
+{% endblock %}

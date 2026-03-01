@@ -288,6 +288,76 @@ def delete_prerequisite(id):
 
     return redirect(url_for("manage_prerequisites"))
 
+@app.route("/manage_semesters", methods=["GET","POST"])
+@login_required
+@role_required("admin")
+def manage_semesters():
+
+    conn = get_db_connection()
+
+    if request.method == "POST":
+
+        semester_name = request.form["semester_name"]
+        start_date = request.form["start_date"]
+        end_date = request.form["end_date"]
+
+        conn.execute(
+            """INSERT INTO semesters
+            (semester_name,start_date,end_date)
+            VALUES (?,?,?)""",
+            (semester_name,start_date,end_date)
+        )
+
+        conn.commit()
+
+    semesters = conn.execute(
+        "SELECT * FROM semesters"
+    ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "manage_semesters.html",
+        semesters=semesters
+    )
+
+@app.route("/activate_semester/<int:id>")
+@login_required
+@role_required("admin")
+def activate_semester(id):
+
+    conn = get_db_connection()
+
+    conn.execute("UPDATE semesters SET status='inactive'")
+
+    conn.execute(
+        "UPDATE semesters SET status='active' WHERE id=?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("manage_semesters"))
+
+@app.route("/delete_semester/<int:id>")
+@login_required
+@role_required("admin")
+def delete_semester(id):
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "DELETE FROM semesters WHERE id=?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("manage_semesters"))
+
+
 @app.route("/logout")
 def logout():
     session.clear()
