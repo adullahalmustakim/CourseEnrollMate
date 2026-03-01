@@ -229,6 +229,65 @@ def manage_credit_hours():
 
     return render_template("manage_credit_hours.html", courses=courses)
 
+@app.route("/manage_prerequisites", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def manage_prerequisites():
+
+    conn = get_db_connection()
+
+    if request.method == "POST":
+
+        course_id = request.form["course_id"]
+        prerequisite_id = request.form["prerequisite_id"]
+
+        if course_id == prerequisite_id:
+            return "A course cannot be its own prerequisite"
+
+        conn.execute(
+            "INSERT INTO course_prerequisites (course_id, prerequisite_id) VALUES (?, ?)",
+            (course_id, prerequisite_id)
+        )
+
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("manage_prerequisites"))
+
+    courses = conn.execute("SELECT * FROM courses").fetchall()
+
+    prerequisites = conn.execute("""
+        SELECT cp.id, c.course_title AS course, p.course_title AS prerequisite
+        FROM course_prerequisites cp
+        JOIN courses c ON cp.course_id = c.id
+        JOIN courses p ON cp.prerequisite_id = p.id
+    """).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "manage_prerequisites.html",
+        courses=courses,
+        prerequisites=prerequisites
+    )
+
+@app.route("/delete_prerequisite/<int:id>")
+@login_required
+@role_required("admin")
+def delete_prerequisite(id):
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "DELETE FROM course_prerequisites WHERE id=?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("manage_prerequisites"))
+
 @app.route("/logout")
 def logout():
     session.clear()
