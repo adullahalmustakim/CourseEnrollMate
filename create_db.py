@@ -5,7 +5,7 @@ conn = sqlite3.connect("courseenrollmate.db")
 cursor = conn.cursor()
 
 cursor.executescript("""
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     full_name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE users (
     role TEXT DEFAULT 'student'
 );
 
-CREATE TABLE courses (
+CREATE TABLE IF NOT EXISTS courses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     course_code TEXT UNIQUE NOT NULL,
     course_title TEXT NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE courses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE course_prerequisites (
+CREATE TABLE IF NOT EXISTS course_prerequisites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     course_id INTEGER NOT NULL,
     prerequisite_id INTEGER NOT NULL,
@@ -30,13 +30,25 @@ CREATE TABLE course_prerequisites (
     FOREIGN KEY (prerequisite_id) REFERENCES courses(id)
 );
 
-CREATE TABLE semesters (
+CREATE TABLE IF NOT EXISTS semesters (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     semester_name TEXT NOT NULL,
     start_date TEXT,
     end_date TEXT,
     status TEXT CHECK(status IN ('active','inactive')) DEFAULT 'inactive'
 );
+
+-- tables for Module 2
+
+CREATE TABLE IF NOT EXISTS course_offerings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    course_id INTEGER NOT NULL,
+    semester_id INTEGER NOT NULL,
+    max_seats INTEGER,
+    FOREIGN KEY (course_id) REFERENCES courses(id),
+    FOREIGN KEY (semester_id) REFERENCES semesters(id)
+);
+                     
 """)
 
 conn.commit()

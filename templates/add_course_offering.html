@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+<div class="login-container">
+
+    <h3>Assign Courses to Semester</h3>
+
+    <div class="actions" style="text-align: right;">
+        <a href="/add_course">Assign New Course</a>
+    </div>
+    
+    <form method="POST">
+
+        <label>Select Courses:</label>
+
+            <select name="course_id" multiple required size="6">
+
+{% for course in courses %}
+
+                <option value="{{ course.id }}">
+
+{{ course.course_code }} - {{ course.course_title }}
+
+                </option>
+
+{% endfor %}
+
+            </select>
+
+            <p>Hold CTRL to select multiple courses</p>
+
+        <label>Select Semester:</label>
+
+            <select name="semester_id" required>
+
+                <option value="">Select Semester</option>
+
+{% for semester in semesters %}
+
+                <option value="{{ semester.id }}">
+
+{{ semester.semester_name }}
+
+                </option>
+
+{% endfor %}
+
+            </select>
+
+                <button type="submit">Assign Courses</button>
+
+    </form>
+
+</div>
+
+{% endblock %}

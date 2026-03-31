@@ -357,6 +357,82 @@ def delete_semester(id):
 
     return redirect(url_for("manage_semesters"))
 
+@app.route("/manage_course_offerings")
+@login_required
+@role_required("admin")
+def manage_course_offerings():
+
+    conn = get_db_connection()
+
+    offerings = conn.execute("""
+        SELECT co.id, c.course_code, c.course_title, s.semester_name
+        FROM course_offerings co
+        JOIN courses c ON co.course_id = c.id
+        JOIN semesters s ON co.semester_id = s.id
+    """).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "manage_course_offerings.html",
+        offerings=offerings
+    )
+
+@app.route("/add_course_offering", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def add_course_offering():
+
+    conn = get_db_connection()
+
+    courses = conn.execute("SELECT * FROM courses").fetchall()
+    semesters = conn.execute("SELECT * FROM semesters").fetchall()
+
+    if request.method == "POST":
+
+        course_ids = request.form.getlist("course_id")
+        semester_id = request.form["semester_id"]
+
+        for course_id in course_ids:
+
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO course_offerings
+                (course_id, semester_id)
+                VALUES (?, ?)
+                """,
+                (course_id, semester_id)
+            )
+
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("manage_course_offerings"))
+
+    conn.close()
+
+    return render_template(
+        "add_course_offering.html",
+        courses=courses,
+        semesters=semesters
+    )
+
+@app.route("/delete_course_offering/<int:id>")
+@login_required
+@role_required("admin")
+def delete_course_offering(id):
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "DELETE FROM course_offerings WHERE id = ?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("manage_course_offerings"))
 
 @app.route("/logout")
 def logout():
