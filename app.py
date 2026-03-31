@@ -493,6 +493,70 @@ def delete_course_offering(id):
 
     return redirect(url_for("manage_course_offerings"))
 
+@app.route("/add_seat_limit")
+@login_required
+@role_required("admin")
+def add_seat_limit():
+
+    conn = get_db_connection()
+
+    offerings = conn.execute("""
+        SELECT 
+            co.id,
+            c.course_code,
+            c.course_title,
+            s.semester_name,
+            co.max_seats
+        FROM course_offerings co
+        JOIN courses c ON co.course_id = c.id
+        JOIN semesters s ON co.semester_id = s.id
+    """).fetchall()
+
+    conn.close()
+
+    return render_template("add_seat_limit.html", offerings=offerings)
+
+@app.route("/insert_seat_limit/<int:id>", methods=["POST"])
+@login_required
+@role_required("admin")
+def insert_seat_limit(id):
+
+    max_seats = request.form["max_seats"]
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "UPDATE course_offerings SET max_seats = ? WHERE id = ?",
+        (max_seats, id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    flash("Maximum seat limit added successfully!")
+
+    return redirect(url_for("add_seat_limit"))
+
+@app.route("/update_seat_limit/<int:id>", methods=["POST"])
+@login_required
+@role_required("admin")
+def update_seat_limit(id):
+
+    max_seats = request.form["max_seats"]
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "UPDATE course_offerings SET max_seats = ? WHERE id = ?",
+        (max_seats, id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    flash("Seat limit updated successfully!")
+
+    return redirect(url_for("add_seat_limit"))
 
 @app.route("/logout")
 def logout():
