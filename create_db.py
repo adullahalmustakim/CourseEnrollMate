@@ -55,9 +55,10 @@ CREATE TABLE IF NOT EXISTS enrollment_requests (
     offering_id INTEGER NOT NULL,
     request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status TEXT CHECK(status IN ('pending','approved','rejected')) DEFAULT 'pending',
+    rejection_reason TEXT,
     FOREIGN KEY (student_id) REFERENCES users(id),
     FOREIGN KEY (offering_id) REFERENCES course_offerings(id)
-);                 
+);
 """)
 
 conn.commit()

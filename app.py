@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, redirect, url_for, session, flash
-from helper import login_required, role_required
+from helper import login_required, role_required, check_prerequisites, check_seat_availability
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
@@ -28,6 +28,7 @@ def login():
 
         username = request.form["username"]
         password = request.form["password"]
+        selected_role = request.form["role"] 
 
         conn = get_db_connection()
 
@@ -38,6 +39,10 @@ def login():
         conn.close()
 
         if user and check_password_hash(user["password"], password):
+
+            if user["role"] != selected_role:
+                return "Invalid role selected!"
+
             session["user_id"] = user["id"]
             session["username"] = user["full_name"]
             session["role"] = user["role"]
@@ -98,7 +103,6 @@ def enroll_courses():
 
     conn = get_db_connection()
 
-    # Fetch courses along with student's enrollment request status (if any)
     courses = conn.execute("""
         SELECT 
             co.id AS offering_id,
@@ -148,6 +152,31 @@ def request_enrollment(offering_id):
     flash("Enrollment request submitted successfully!")
     return redirect(url_for("enroll_courses"))
 
+@app.route("/rejected_courses")
+@login_required
+@role_required("student")
+def rejected_courses():
+
+    conn = get_db_connection()
+
+    rejected = conn.execute("""
+        SELECT 
+            c.course_code,
+            c.course_title,
+            s.semester_name,
+            er.rejection_reason,
+            er.request_date
+        FROM enrollment_requests er
+        JOIN course_offerings co ON er.offering_id = co.id
+        JOIN courses c ON co.course_id = c.id
+        JOIN semesters s ON co.semester_id = s.id
+        WHERE er.student_id = ? AND er.status = 'rejected'
+        ORDER BY er.request_date DESC
+    """, (session["user_id"],)).fetchall()
+
+    conn.close()
+
+    return render_template("rejected_courses.html", rejected=rejected)
 
 @app.route("/admin")
 @login_required
@@ -557,6 +586,122 @@ def update_seat_limit(id):
     flash("Seat limit updated successfully!")
 
     return redirect(url_for("add_seat_limit"))
+
+@app.route("/manage_enrollments")
+@login_required
+@role_required("admin")
+def manage_enrollments():
+
+    conn = get_db_connection()
+
+    requests = conn.execute("""
+        SELECT 
+            er.id AS request_id,
+            er.student_id,
+            u.full_name AS student_name,
+            c.course_code,
+            c.course_title,
+            c.id AS course_id,
+            co.id AS offering_id,
+            co.max_seats,
+            s.semester_name,
+            (
+                SELECT COUNT(*) 
+                FROM enrollment_requests
+                WHERE offering_id = co.id AND status = 'approved'
+            ) AS approved_count
+        FROM enrollment_requests er
+        JOIN users u ON er.student_id = u.id
+        JOIN course_offerings co ON er.offering_id = co.id
+        JOIN courses c ON co.course_id = c.id
+        JOIN semesters s ON co.semester_id = s.id
+        WHERE er.status = 'pending'
+    """).fetchall()
+
+    request_list = []
+
+    for r in requests:
+        prereq_status = check_prerequisites(r["student_id"], r["course_id"])
+
+        request_list.append({
+            "request_id": r["request_id"],
+            "student_name": r["student_name"],
+            "course_code": r["course_code"],
+            "course_title": r["course_title"],
+            "semester_name": r["semester_name"],
+            "approved_count": r["approved_count"],
+            "max_seats": r["max_seats"],
+            "prereq_status": prereq_status
+        })
+
+    conn.close()
+
+    return render_template("manage_enrollments.html", requests=request_list)
+
+@app.route("/approve_enrollment/<int:request_id>")
+@login_required
+@role_required("admin")
+def approve_enrollment(request_id):
+
+    conn = get_db_connection()
+
+    req = conn.execute("""
+        SELECT er.student_id, co.id AS offering_id, co.max_seats, c.id AS course_id
+        FROM enrollment_requests er
+        JOIN course_offerings co ON er.offering_id = co.id
+        JOIN courses c ON co.course_id = c.id
+        WHERE er.id = ?
+    """, (request_id,)).fetchone()
+
+    student_id = req["student_id"]
+    offering_id = req["offering_id"]
+    course_id = req["course_id"]
+
+    from helper import check_prerequisites, check_seat_availability
+
+    if not check_prerequisites(student_id, course_id):
+        flash("Cannot approve: prerequisites not completed.")
+        conn.close()
+        return redirect(url_for("manage_enrollments"))
+
+    if not check_seat_availability(offering_id):
+        flash("Cannot approve: seats full.")
+        conn.close()
+        return redirect(url_for("manage_enrollments"))
+
+    conn.execute("""
+        UPDATE enrollment_requests
+        SET status = 'approved'
+        WHERE id = ?
+    """, (request_id,))
+    conn.commit()
+    conn.close()
+
+    flash("Enrollment approved successfully!")
+    return redirect(url_for("manage_enrollments"))
+
+@app.route("/reject_enrollment/<int:request_id>", methods=["GET","POST"])
+@login_required
+@role_required("admin")
+def reject_enrollment(request_id):
+
+    if request.method == "POST":
+        reason = request.form["rejection_reason"]
+
+        conn = get_db_connection()
+        conn.execute("""
+            UPDATE enrollment_requests
+            SET status = 'rejected', rejection_reason = ?
+            WHERE id = ?
+        """, (reason, request_id))
+        conn.commit()
+        conn.close()
+
+        flash("Enrollment rejected successfully!")
+        return redirect(url_for("manage_enrollments"))
+
+    return render_template("reject_enrollment.html", request_id=request_id)
+
 
 @app.route("/logout")
 def logout():

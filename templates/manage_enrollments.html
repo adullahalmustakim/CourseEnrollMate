@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+<div class="table-container">
+
+    <h2>Manage Enrollment Requests</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Course Code</th>
+                <th>Course Title</th>
+                <th>Semester</th>
+                <th>Seats</th>
+                <th>Prerequisites</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+{% for req in requests %}
+        <tbody>
+            <tr>
+                <td>{{ req.student_name }}</td>
+                <td>{{ req.course_code }}</td>
+                <td>{{ req.course_title }}</td>
+                <td>{{ req.semester_name }}</td>
+                <td>{{ req.approved_count }}/{{ req.max_seats }}</td>
+
+            <td>
+        {% if req.prereq_status %}
+                <span style="color:green;">Completed</span>
+        {% else %}
+                <span style="color:red;">Not Completed</span>
+        {% endif %}
+            </td>
+
+            <td>
+                <a href="{{ url_for('approve_enrollment', request_id=req.request_id) }}">Approve</a>
+        |
+                <a href="{{ url_for('reject_enrollment', request_id=req.request_id) }}">Reject</a>
+            </td>
+            </tr>
+        </tbody>
+{% endfor %}
+
+    </table>
+</div>
+{% endblock %}
