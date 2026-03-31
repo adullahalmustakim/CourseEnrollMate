@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for, session
+from flask import Flask, request, render_template, redirect, url_for, session, flash
 from helper import login_required, role_required
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -38,7 +38,7 @@ def login():
         conn.close()
 
         if user and check_password_hash(user["password"], password):
-
+            session["user_id"] = user["id"]
             session["username"] = user["full_name"]
             session["role"] = user["role"]
 
@@ -80,7 +80,7 @@ def register():
         conn.close()
 
         return redirect("/login")
-
+    flash("Enrollment request submitted successfully!")
     return render_template("register.html")
 
 @app.route("/student")
@@ -88,6 +88,65 @@ def register():
 @role_required("student")
 def student_dashboard():
     return render_template("student_dashboard.html")
+
+@app.route("/enroll_courses")
+@login_required
+@role_required("student")
+def enroll_courses():
+
+    student_id = session["user_id"]
+
+    conn = get_db_connection()
+
+    # Fetch courses along with student's enrollment request status (if any)
+    courses = conn.execute("""
+        SELECT 
+            co.id AS offering_id,
+            c.course_code,
+            c.course_title,
+            c.credit_hours,
+            s.semester_name,
+            er.status AS enrollment_status
+        FROM course_offerings co
+        JOIN courses c ON co.course_id = c.id
+        JOIN semesters s ON co.semester_id = s.id
+        LEFT JOIN enrollment_requests er
+            ON er.offering_id = co.id AND er.student_id = ?
+        WHERE s.status = 'active'
+    """, (student_id,)).fetchall()
+
+    conn.close()
+
+    return render_template("enroll_courses.html", courses=courses)
+
+@app.route("/request_enrollment/<int:offering_id>")
+@login_required
+@role_required("student")
+def request_enrollment(offering_id):
+
+    student_id = session["user_id"]
+    conn = get_db_connection()
+
+    existing = conn.execute("""
+        SELECT * FROM enrollment_requests
+        WHERE student_id = ? AND offering_id = ?
+    """, (student_id, offering_id)).fetchone()
+
+    if existing:
+        flash(f"You already have a request ({existing['status']}) for this course.")
+        conn.close()
+        return redirect(url_for("enroll_courses"))
+
+    conn.execute("""
+        INSERT INTO enrollment_requests (student_id, offering_id)
+        VALUES (?, ?)
+    """, (student_id, offering_id))
+
+    conn.commit()
+    conn.close()
+
+    flash("Enrollment request submitted successfully!")
+    return redirect(url_for("enroll_courses"))
 
 
 @app.route("/admin")
@@ -433,6 +492,7 @@ def delete_course_offering(id):
     conn.close()
 
     return redirect(url_for("manage_course_offerings"))
+
 
 @app.route("/logout")
 def logout():

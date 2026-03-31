@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+<div class="table-container">
+
+    <h2>Available Courses</h2>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class="flash-messages">
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <table>
+        <thead>
+            <tr>
+                <th>Course Code</th>
+                <th>Course Title</th>
+                <th>Credits</th>
+                <th>Semester</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for course in courses %}
+            <tr>
+                <td>{{ course.course_code }}</td>
+                <td>{{ course.course_title }}</td>
+                <td>{{ course.credit_hours }}</td>
+                <td>{{ course.semester_name }}</td>
+                <td>
+                    {% if course.enrollment_status %}
+                        <button class="disabled-btn" disabled>{{ course.enrollment_status|capitalize }}</button>
+                    {% else %}
+                        <a href="/request_enrollment/{{ course.offering_id }}" class="enroll-btn">Enroll</a>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+{% endblock %}
