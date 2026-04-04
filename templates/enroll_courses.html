@@ -6,7 +6,6 @@
 
     <h2>Available Courses</h2>
 
-    <!-- Flash messages -->
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         <ul class="flash-messages">
@@ -35,12 +34,22 @@
                 <td>{{ course.credit_hours }}</td>
                 <td>{{ course.semester_name }}</td>
                 <td>
-                    {% if course.enrollment_status %}
-                        <button class="disabled-btn" disabled>{{ course.enrollment_status|capitalize }}</button>
-                    {% else %}
-                        <a href="/request_enrollment/{{ course.offering_id }}" class="enroll-btn">Enroll</a>
-                    {% endif %}
-                </td>
+    {% if course.enrollment_status %}
+                    <button class="disabled-btn" disabled>
+                    {{ course.enrollment_status|capitalize }}
+                    </button>
+
+    {% elif course.deadline_passed %}
+                    <button class="disabled-btn" disabled>
+                     Deadline Passed
+                    </button>
+
+    {% else %}
+        <a href="/request_enrollment/{{ course.offering_id }}" class="enroll-btn">
+            Enroll
+        </a>
+    {% endif %}
+</td>
             </tr>
         {% endfor %}
         </tbody>

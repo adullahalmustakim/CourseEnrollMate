@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, redirect, url_for, session, flash
 from helper import login_required, role_required, check_prerequisites, check_seat_availability
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import date
 
 app = Flask(__name__)
 
@@ -28,7 +29,7 @@ def login():
 
         username = request.form["username"]
         password = request.form["password"]
-        selected_role = request.form["role"] 
+        selected_role = request.form["role"]
 
         conn = get_db_connection()
 
@@ -106,6 +107,7 @@ def enroll_courses():
     courses = conn.execute("""
         SELECT 
             co.id AS offering_id,
+            co.semester_id,
             c.course_code,
             c.course_title,
             c.credit_hours,
@@ -119,9 +121,35 @@ def enroll_courses():
         WHERE s.status = 'active'
     """, (student_id,)).fetchall()
 
+    course_list = []
+
+    for c in courses:
+
+
+        deadline = conn.execute("""
+            SELECT deadline_date
+            FROM enrollment_deadline
+            WHERE semester_id = ?
+        """, (c["semester_id"],)).fetchone()
+
+        if deadline and date.today() > date.fromisoformat(deadline["deadline_date"]):
+            deadline_passed = True
+        else:
+            deadline_passed = False
+
+        course_list.append({
+            "offering_id": c["offering_id"],
+            "course_code": c["course_code"],
+            "course_title": c["course_title"],
+            "credit_hours": c["credit_hours"],
+            "semester_name": c["semester_name"],
+            "enrollment_status": c["enrollment_status"],
+            "deadline_passed": deadline_passed
+        })
+
     conn.close()
 
-    return render_template("enroll_courses.html", courses=courses)
+    return render_template("enroll_courses.html", courses=course_list)
 
 @app.route("/request_enrollment/<int:offering_id>")
 @login_required
@@ -130,6 +158,19 @@ def request_enrollment(offering_id):
 
     student_id = session["user_id"]
     conn = get_db_connection()
+
+    deadline = conn.execute("""
+        SELECT ed.deadline_date
+        FROM enrollment_deadline ed
+        JOIN course_offerings co ON ed.semester_id = co.semester_id
+        WHERE co.id = ?
+    """, (offering_id,)).fetchone()
+
+    if deadline:
+        if date.today() > date.fromisoformat(deadline["deadline_date"]):
+            flash("Enrollment deadline has passed for this course.")
+            conn.close()
+            return redirect(url_for("enroll_courses"))
 
     existing = conn.execute("""
         SELECT * FROM enrollment_requests
@@ -702,6 +743,57 @@ def reject_enrollment(request_id):
 
     return render_template("reject_enrollment.html", request_id=request_id)
 
+@app.route("/manage_deadlines", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def manage_deadlines():
+
+    conn = get_db_connection()
+
+    if request.method == "POST":
+
+        semester_id = request.form["semester_id"]
+        deadline = request.form["deadline"]
+
+        conn.execute("""
+            INSERT INTO enrollment_deadline (semester_id, deadline_date)
+            VALUES (?,?)
+        """, (semester_id, deadline))
+
+        conn.commit()
+
+    deadlines = conn.execute("""
+        SELECT ed.id, s.semester_name, ed.deadline_date
+        FROM enrollment_deadline ed
+        JOIN semesters s ON ed.semester_id = s.id
+    """).fetchall()
+
+    semesters = conn.execute("SELECT * FROM semesters").fetchall()
+
+    conn.close()
+
+    return render_template(
+        "manage_deadlines.html",
+        deadlines=deadlines,
+        semesters=semesters
+    )
+
+@app.route("/delete_deadline/<int:id>")
+@login_required
+@role_required("admin")
+def delete_deadline(id):
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "DELETE FROM enrollment_deadline WHERE id=?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("manage_deadlines"))
 
 @app.route("/logout")
 def logout():

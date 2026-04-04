@@ -59,6 +59,15 @@ CREATE TABLE IF NOT EXISTS enrollment_requests (
     FOREIGN KEY (student_id) REFERENCES users(id),
     FOREIGN KEY (offering_id) REFERENCES course_offerings(id)
 );
+
+-- tables for Module 3
+
+CREATE TABLE IF NOT EXISTS enrollment_deadline (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    semester_id INTEGER NOT NULL,
+    deadline_date TEXT NOT NULL,
+    FOREIGN KEY (semester_id) REFERENCES semesters(id)
+);
 """)
 
 conn.commit()

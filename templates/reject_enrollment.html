@@ -2,14 +2,14 @@
 
 {% block body %}
 <div class="login-container">
-    <h3>Reject Enrollment Request</h3>
+<h3>Reject Enrollment Request</h3>
 
-    <form method="POST">
-        <label for="reason">Rejection Reason:</label><br>
-        <textarea name="rejection_reason" rows="4" cols="50" required></textarea><br><br>
-        <button type="submit">Reject</button>
-        <br><br>
-        <a href="{{ url_for('manage_enrollments') }}">Cancel</a>
-    </form>
+<form method="POST">
+    <label for="reason">Rejection Reason:</label><br>
+    <textarea name="rejection_reason" rows="4" cols="50" required></textarea><br><br>
+    <button type="submit">Reject</button>
+    <br><br>
+    <a href="{{ url_for('manage_enrollments') }}">Cancel</a>
+</form>
 </div>
 {% endblock %}
