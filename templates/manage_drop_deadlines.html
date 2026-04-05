@@ -4,48 +4,48 @@
 
 <h2>Manage Drop Deadlines</h2>
 <div class="login-container">
-    <form method="POST">
+<form method="POST">
 
-        <label>Semester:</label>
-        <select name="semester_id">
+<label>Semester:</label>
+<select name="semester_id">
 {% for s in semesters %}
-            <option value="{{ s.id }}">{{ s.semester_name }}</option>
+<option value="{{ s.id }}">{{ s.semester_name }}</option>
 {% endfor %}
-        </select>
+</select>
 
-        <br><br>
+<br><br>
 
-        <label>Deadline:</label>
-        <input type="date" name="deadline" required>
+<label>Deadline:</label>
+<input type="date" name="deadline" required>
 
-        <br><br>
+<br><br>
 
-        <button type="submit">Add Deadline</button>
+<button type="submit">Add Deadline</button>
 
-    </form>
+</form>
 </div>
 <br><br>
 <div class="table-container">
-    <table>
-        <thead>
-            <tr>
-                <th>Semester</th>
-                <th>Deadline</th>
-                <th>Action</th>
-            </tr>
-        </thead>
+<table>
+<thead>
+<tr>
+<th>Semester</th>
+<th>Deadline</th>
+<th>Action</th>
+</tr>
+</thead>
 {% for d in deadlines %}
-        <tbody>
-            <tr>
-                <td>{{ d.semester_name }}</td>
-                <td>{{ d.deadline_date }}</td>
-                <td>
-                    <a href="/delete_drop_deadline/{{ d.id }}">Delete</a>
-                </td>
-            </tr>
-        </tbody>
+<tbody>
+<tr>
+<td>{{ d.semester_name }}</td>
+<td>{{ d.deadline_date }}</td>
+<td>
+<a href="/delete_drop_deadline/{{ d.id }}">Delete</a>
+</td>
+</tr>
+</tbody>
 {% endfor %}
 
-    </table>
+</table>
 </div>
 {% endblock %}

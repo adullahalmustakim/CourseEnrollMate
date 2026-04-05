@@ -934,6 +934,57 @@ def delete_drop_deadline(id):
 
     return redirect(url_for("manage_drop_deadlines"))
 
+@app.route("/enrollment_report")
+@login_required
+@role_required("admin")
+def enrollment_report():
+
+    conn = get_db_connection()
+
+    course_summary = conn.execute("""
+        SELECT 
+            c.course_code,
+            c.course_title,
+            s.semester_name,
+            co.max_seats,
+
+            SUM(CASE WHEN er.status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
+            SUM(CASE WHEN er.status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
+            SUM(CASE WHEN er.status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count
+
+        FROM course_offerings co
+        JOIN courses c ON co.course_id = c.id
+        JOIN semesters s ON co.semester_id = s.id
+        LEFT JOIN enrollment_requests er ON er.offering_id = co.id
+
+        GROUP BY co.id
+        ORDER BY s.semester_name, c.course_code
+    """).fetchall()
+
+    student_details = conn.execute("""
+        SELECT 
+            u.full_name AS student_name,
+            c.course_code,
+            c.course_title,
+            s.semester_name,
+            er.status,
+            er.request_date
+        FROM enrollment_requests er
+        JOIN users u ON er.student_id = u.id
+        JOIN course_offerings co ON er.offering_id = co.id
+        JOIN courses c ON co.course_id = c.id
+        JOIN semesters s ON co.semester_id = s.id
+        ORDER BY u.full_name
+    """).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "enrollment_report.html",
+        course_summary=course_summary,
+        student_details=student_details
+    )
+
 @app.route("/logout")
 def logout():
     session.clear()
