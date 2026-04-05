@@ -68,6 +68,13 @@ CREATE TABLE IF NOT EXISTS enrollment_deadline (
     deadline_date TEXT NOT NULL,
     FOREIGN KEY (semester_id) REFERENCES semesters(id)
 );
+
+CREATE TABLE IF NOT EXISTS drop_deadline (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    semester_id INTEGER NOT NULL,
+    deadline_date TEXT NOT NULL,
+    FOREIGN KEY (semester_id) REFERENCES semesters(id)
+);
 """)
 
 conn.commit()

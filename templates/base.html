@@ -8,8 +8,33 @@
 </head>
 <body>
     <header class="site-header">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="CourseEnrollMate Logo" class="logo">
-        <h1>CourseEnrollMate</h1>
+        <div class="left">
+            <img src="{{ url_for('static', filename='logo.png') }}" class="logo">
+            <h1>CourseEnrollMate</h1>
+        </div>
+
+        {% if "username" in session %}
+        <div class="nav-links">
+
+    {% if session["role"] == "admin" %}
+        <a href="{{ url_for('admin_dashboard') }}"
+           style="background-color:#28a745; color:white; text-decoration:none; border-radius:6px; font-weight:bold;">
+           Dashboard
+        </a>
+    {% elif session["role"] == "student" %}
+        <a href="{{ url_for('student_dashboard') }}"
+           style="padding:8px 16px; background-color:#28a745; color:white; text-decoration:none; border-radius:6px; font-weight:bold;">
+           Dashboard
+        </a>
+    {% endif %}
+
+    <a href="{{ url_for('logout') }}"
+       style="background-color:#dc3545; color:white; text-decoration:none; border-radius:6px; font-weight:bold;">
+       Logout
+    </a>
+
+</div>
+    {% endif %}
     </header>
     {% block body %}
 

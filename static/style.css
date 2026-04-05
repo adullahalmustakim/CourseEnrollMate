@@ -12,11 +12,12 @@ header{
 .site-header{
     background:green;
     color:white;
-    padding:10px;
     display:flex;
     align-items:center;
-    justify-content:center;
+    justify-content:space-between;;
     gap:15px;
+    padding: 3px 10px;
+    border-radius: 5px;
 }
 
 .logo{
@@ -232,3 +233,12 @@ tbody tr{
     border-radius:5px;
     text-decoration:none;
 }
+
+/* nav ber*/
+
+.left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+

@@ -219,6 +219,94 @@ def rejected_courses():
 
     return render_template("rejected_courses.html", rejected=rejected)
 
+@app.route("/my_courses")
+@login_required
+@role_required("student")
+def my_courses():
+
+    student_id = session["user_id"]
+    conn = get_db_connection()
+
+    courses = conn.execute("""
+        SELECT 
+            er.id AS enrollment_id,
+            co.id AS offering_id,
+            co.semester_id,
+            c.course_code,
+            c.course_title,
+            s.semester_name
+        FROM enrollment_requests er
+        JOIN course_offerings co ON er.offering_id = co.id
+        JOIN courses c ON co.course_id = c.id
+        JOIN semesters s ON co.semester_id = s.id
+        WHERE er.student_id = ? AND er.status = 'approved'
+    """, (student_id,)).fetchall()
+
+    course_list = []
+
+    for c in courses:
+
+        deadline = conn.execute("""
+            SELECT deadline_date FROM drop_deadline
+            WHERE semester_id = ?
+        """, (c["semester_id"],)).fetchone()
+
+        if deadline and date.today() > date.fromisoformat(deadline["deadline_date"]):
+            drop_allowed = False
+        else:
+            drop_allowed = True
+
+        course_list.append({
+            "enrollment_id": c["enrollment_id"],
+            "course_code": c["course_code"],
+            "course_title": c["course_title"],
+            "semester_name": c["semester_name"],
+            "drop_allowed": drop_allowed
+        })
+
+    conn.close()
+
+    return render_template("my_courses.html", courses=course_list)
+
+@app.route("/drop_course/<int:enrollment_id>")
+@login_required
+@role_required("student")
+def drop_course(enrollment_id):
+
+    conn = get_db_connection()
+
+    # Get semester for deadline check
+    data = conn.execute("""
+        SELECT co.semester_id
+        FROM enrollment_requests er
+        JOIN course_offerings co ON er.offering_id = co.id
+        WHERE er.id = ?
+    """, (enrollment_id,)).fetchone()
+
+    from datetime import date
+
+    deadline = conn.execute("""
+        SELECT deadline_date FROM drop_deadline
+        WHERE semester_id = ?
+    """, (data["semester_id"],)).fetchone()
+
+    if deadline and date.today() > date.fromisoformat(deadline["deadline_date"]):
+        conn.close()
+        flash("Drop deadline has passed.")
+        return redirect(url_for("my_courses"))
+
+    # Delete enrollment (drop)
+    conn.execute("""
+        DELETE FROM enrollment_requests
+        WHERE id = ?
+    """, (enrollment_id,))
+
+    conn.commit()
+    conn.close()
+
+    flash("Course dropped successfully.")
+    return redirect(url_for("my_courses"))
+
 @app.route("/admin")
 @login_required
 @role_required("admin")
@@ -794,6 +882,57 @@ def delete_deadline(id):
     conn.close()
 
     return redirect(url_for("manage_deadlines"))
+
+@app.route("/manage_drop_deadlines", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def manage_drop_deadlines():
+
+    conn = get_db_connection()
+
+    if request.method == "POST":
+        semester_id = request.form["semester_id"]
+        deadline = request.form["deadline"]
+
+        conn.execute("""
+            INSERT INTO drop_deadline (semester_id, deadline_date)
+            VALUES (?, ?)
+        """, (semester_id, deadline))
+
+        conn.commit()
+
+    deadlines = conn.execute("""
+        SELECT dd.id, s.semester_name, dd.deadline_date
+        FROM drop_deadline dd
+        JOIN semesters s ON dd.semester_id = s.id
+    """).fetchall()
+
+    semesters = conn.execute("SELECT * FROM semesters").fetchall()
+
+    conn.close()
+
+    return render_template(
+        "manage_drop_deadlines.html",
+        deadlines=deadlines,
+        semesters=semesters
+    )
+
+@app.route("/delete_drop_deadline/<int:id>")
+@login_required
+@role_required("admin")
+def delete_drop_deadline(id):
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "DELETE FROM drop_deadline WHERE id = ?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("manage_drop_deadlines"))
 
 @app.route("/logout")
 def logout():
