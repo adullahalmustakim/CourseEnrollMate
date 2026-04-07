@@ -305,7 +305,38 @@ def drop_course(enrollment_id):
     conn.close()
 
     flash("Course dropped successfully.")
-    return redirect(url_for("my_courses"))
+    return redirect(url_for("my_courses")) 
+
+@app.route("/enrolled_courses")
+@login_required
+@role_required("student")
+def enrolled_courses():
+
+    student_id = session["user_id"]
+    conn = get_db_connection()
+
+    courses = conn.execute("""
+        SELECT 
+            c.course_code,
+            c.course_title,
+            c.credit_hours,
+            s.semester_name
+        FROM enrollment_requests er
+        JOIN course_offerings co ON er.offering_id = co.id
+        JOIN courses c ON co.course_id = c.id
+        JOIN semesters s ON co.semester_id = s.id
+        WHERE er.student_id = ? AND er.status = 'approved'
+    """, (student_id,)).fetchall()
+
+    total_credits = sum(course["credit_hours"] for course in courses)
+
+    conn.close()
+
+    return render_template(
+        "enrolled_courses.html",
+        courses=courses,
+        total_credits=total_credits
+    )
 
 @app.route("/admin")
 @login_required
@@ -984,6 +1015,8 @@ def enrollment_report():
         course_summary=course_summary,
         student_details=student_details
     )
+
+
 
 @app.route("/logout")
 def logout():

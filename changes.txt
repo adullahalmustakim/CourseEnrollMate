@@ -1,4 +1,0 @@
-app.py
-    -@app.route("/enrollment_report")
-admin_dashboard.html
-enrollment_report.html
