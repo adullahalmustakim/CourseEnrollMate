@@ -75,9 +75,43 @@ CREATE TABLE IF NOT EXISTS drop_deadline (
     deadline_date TEXT NOT NULL,
     FOREIGN KEY (semester_id) REFERENCES semesters(id)
 );
-""")
+                     
+CREATE TABLE IF NOT EXISTS admin_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    full_name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status TEXT CHECK(status IN ('pending','approved','rejected')) DEFAULT 'pending'
+);
+                     
+CREATE TABLE IF NOT EXISTS developers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL
+);
 
+
+""")
 conn.commit()
 conn.close()
 
 print("Database created successfully!")
+
+# develpoer id creation
+# from werkzeug.security import generate_password_hash
+# import sqlite3
+
+# conn = sqlite3.connect("courseenrollmate.db")
+
+# password = generate_password_hash("dev123")  # default password
+
+# conn.execute("""
+# INSERT OR IGNORE INTO developers (username, password)
+# VALUES (?, ?)
+# """, ("developer", password))
+
+# conn.commit()
+# conn.close()
+
+# print("Default developer created!")

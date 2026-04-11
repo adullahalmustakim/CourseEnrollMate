@@ -6,22 +6,56 @@
 
     <h3>Create Account</h3>
 
-    <form method="POST" action="/register">
+    {% with messages = get_flashed_messages() %}
+        {% for message in messages %}
+            <p style="color:red;">{{ message }}</p>
+        {% endfor %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('register') }}" novalidate>
 
         <label>Username</label>
-        <input type="text" name="username" placeholder="Enter Username" required>
+        <input 
+            type="text" 
+            name="username" 
+            placeholder="Enter Username"
+            minlength="3"
+            maxlength="50"
+            pattern="^[A-Za-z ]+$"
+            title="Only letters allowed (min 3 characters)"
+            required
+        >
 
         <label>Email</label>
-        <input type="email" name="email" placeholder="Enter Email" required>
+        <input 
+            type="email" 
+            name="email" 
+            placeholder="Enter Email"
+            required
+        >
 
         <label>Password</label>
-        <input type="password" name="password" placeholder="Enter Password" required>
-
+        <input 
+            type="password" 
+            name="password" 
+            placeholder="Enter Password"
+            minlength="6"
+            pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$"
+            title="At least 6 characters, include letters and numbers"
+            required
+        >
+       
         <label>Confirm Password</label>
-        <input type="password" name="confirm_password" placeholder="Confirm Password" required>
+        <input 
+            type="password" 
+            name="confirm_password" 
+            placeholder="Confirm Password"
+            required
+        >
 
         <label>Role</label>
-        <select name="role">
+        <select name="role" required>
+            <option value="">Select Role</option>
             <option value="student">Student</option>
             <option value="admin">Admin</option>
         </select>
@@ -31,9 +65,21 @@
     </form>
 
     <p class="register">
-        Already have an account? <a href="/login">Login here</a>
+        Already have an account? <a href="{{ url_for('login') }}">Login here</a>
     </p>
 
 </div>
+
+<script>
+document.querySelector("form").addEventListener("submit", function(e) {
+    const password = document.querySelector("input[name='password']").value;
+    const confirm = document.querySelector("input[name='confirm_password']").value;
+
+    if (password !== confirm) {
+        e.preventDefault();
+        alert("Passwords do not match!");
+    }
+});
+</script>
 
 {% endblock %}

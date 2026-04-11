@@ -2,24 +2,38 @@
 
 {% block body %}
 
-<h2>Student Dashboard</h2>
+<div class="dashboard">
 
-{% if "username" in session %}
-<p>Welcome {{ session["username"] }}!</p>
-{% else %}
-<p>You are not logged in. Please log in</p>
-{% endif %}
+    <h2>Student Dashboard</h2>
 
-<p>You can enroll in courses here.</p>
+    {% if "username" in session %}
+        <p>Welcome, <b>{{ session["username"] }}</b> 👋</p>
+    {% endif %}
 
-<br>
+    <p>Use the sidebar to navigate through your courses and enrollment options.</p>
 
-<a href="/enroll_courses">Enroll in Courses</a>
+    <div class="stats">
 
-<a href="/rejected_courses">View Rejected Courses</a>
+        <div class="card">
+            <h3>📌</h3>
+            <p>System Status</p>
+            <span>Active Enrollment System</span>
+        </div>
 
-<a href="/my_courses">Drop Courses</a>
+        <div class="card">
+            <h3>📅</h3>
+            <p>Tip</p>
+            <span>Check deadlines regularly</span>
+        </div>
 
-<a href="/enrolled_courses">My Enrolled Courses</a>
+        <div class="card">
+            <h3>🎓</h3>
+            <p>Portal</p>
+            <span>Course Enrollment System</span>
+        </div>
+
+    </div>
+
+</div>
 
 {% endblock %}

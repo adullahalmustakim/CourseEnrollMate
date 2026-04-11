@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="table-container">
+<h2>Developer Panel</h2>
+
+<table>
+    <thead>
+    <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Date</th>
+        <th>Action</th>
+    </tr>
+    </thead>
+    {% for r in requests %}
+    <tbody>
+    <tr>
+        <td>{{ r.full_name }}</td>
+        <td>{{ r.email }}</td>
+        <td>{{ r.request_date }}</td>
+        <td>
+            <a href="/approve_admin/{{ r.id }}">Approve</a>
+            <a href="/reject_admin/{{ r.id }}">Reject</a>
+        </td>
+    </tr>
+    </tbody>
+    {% endfor %}
+</table>
+</div>
+{% endblock %}

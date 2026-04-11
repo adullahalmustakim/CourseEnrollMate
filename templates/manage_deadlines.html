@@ -1,67 +1,69 @@
 {% extends "base.html" %}
-
 {% block body %}
 
 <h2>Manage Enrollment Deadlines</h2>
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+    {% for msg in messages %}
+        <p style="color:red;">{{ msg }}</p>
+    {% endfor %}
+{% endif %}
+{% endwith %}
+
 <div class="login-container">
-<h3>Add Deadline</h3>
+    <h3>Add Deadline</h3>
 
-<form method="POST">
+    <form method="POST" action="{{ url_for('manage_deadlines') }}">
 
-<label>Semester:</label>
+    <label>Semester:</label>
+    <select name="semester_id" required>
+        <option value="">Select Semester</option>
+        {% for semester in semesters %}
+        <option value="{{ semester.id }}">{{ semester.semester_name }}</option>
+        {% endfor %}
+    </select>
 
-<select name="semester_id">
+    <br><br>
 
-{% for semester in semesters %}
+    <label>Deadline Date:</label>
+    <input type="date" name="deadline" required>
 
-<option value="{{ semester.id }}">
-{{ semester.semester_name }}
-</option>
+    <br><br>
 
-{% endfor %}
+    <button type="submit">Add Deadline</button>
 
-</select>
-
-<br><br>
-
-<label>Deadline Date:</label>
-
-<input type="date" name="deadline" required>
-
-<br><br>
-
-<button type="submit">Add Deadline</button>
-
-</form>
+    </form>
 </div>
+
 <br><br>
 
 <div class="table-container">
-<h3>Existing Deadlines</h3>
+    <h3>Existing Deadlines</h3>
 
-<table>
-<thead>
-<tr>
-<th>Semester</th>
-<th>Deadline</th>
-<th>Action</th>
-</tr>
-</thead>
-{% for d in deadlines %}
-<tbody>
-<tr>
+    <table>
+        <thead>
+            <tr>
+            <th>Semester</th>
+            <th>Deadline</th>
+            <th>Action</th>
+            </tr>
+        </thead>
 
-<td>{{ d.semester_name }}</td>
-<td>{{ d.deadline_date }}</td>
+        <tbody>
+        {% for d in deadlines %}
+            <tr>
+            <td>{{ d.semester_name }}</td>
+            <td>{{ d.deadline_date }}</td>
+            <td>
+            <form method="POST" action="{{ url_for('delete_deadline', id=d.id) }}">
+                <button type="submit">Delete</button>
+            </form>
+            </td>
+            </tr>
+        {% endfor %}
+        </tbody>
 
-<td>
-<a href="/delete_deadline/{{ d.id }}">Delete</a>
-</td>
-
-</tr>
-</tbody>
-{% endfor %}
-
-</table>
+    </table>
 </div>
+
 {% endblock %}

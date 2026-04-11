@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import session, redirect
+from flask import session, redirect, url_for, flash
 import sqlite3
 
 
@@ -37,6 +37,17 @@ def role_required(role):
 
     return decorator
 
+def developer_required(f):
+    from functools import wraps
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "developer_id" not in session:
+            flash("Developer login required!")
+            return redirect(url_for("developer_login"))
+        return f(*args, **kwargs)
+
+    return decorated_function
 
 def check_prerequisites(student_id, course_id):
 

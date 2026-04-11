@@ -1,13 +1,26 @@
 from flask import Flask, request, render_template, redirect, url_for, session, flash
-from helper import login_required, role_required, check_prerequisites, check_seat_availability
+from helper import login_required, role_required, developer_required, check_prerequisites, check_seat_availability
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import date
+from datetime import date, datetime
+from validators import validate_email, validate_password, validate_name, validate_credit_hours, validate_course_code
+from flask_session import Session
+import os
 
+def validate_date(date_text):
+    try:
+        return datetime.strptime(date_text, "%Y-%m-%d")
+    except:
+        return None
+    
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev_secret_key")
 
 import sqlite3
 def get_db_connection():
-    conn = sqlite3.connect("courseenrollmate.db")
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(BASE_DIR, "courseenrollmate.db")
+
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -20,73 +33,136 @@ Session(app)
 
 @app.route("/")
 def home():
-    return render_template("home.html")
+    return render_template("home.html", is_home=True)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
 
     if request.method == "POST":
 
-        username = request.form["username"]
-        password = request.form["password"]
-        selected_role = request.form["role"]
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        selected_role = request.form.get("role", "").strip()
+
+        if not username or not password or not selected_role:
+            flash("All fields are required!")
+            return redirect(url_for("login"))
 
         conn = get_db_connection()
 
         user = conn.execute(
-            "SELECT * FROM users WHERE full_name=?",(username,)
+            "SELECT * FROM users WHERE full_name = ?",
+            (username,)
         ).fetchone()
 
         conn.close()
 
-        if user and check_password_hash(user["password"], password):
+        if not user:
+            flash("Invalid username or password")
+            return redirect(url_for("login"))
 
-            if user["role"] != selected_role:
-                return "Invalid role selected!"
+        if not check_password_hash(user["password"], password):
+            flash("Invalid username or password")
+            return redirect(url_for("login"))
 
-            session["user_id"] = user["id"]
-            session["username"] = user["full_name"]
-            session["role"] = user["role"]
+        if user["role"] != selected_role:
+            flash("Invalid role selected!")
+            return redirect(url_for("login"))
 
-            if user["role"] == "admin":
-                return redirect(url_for("admin_dashboard"))
-            else:
-                return redirect(url_for("student_dashboard"))
+        session.clear()
+        session["user_id"] = user["id"]
+        session["username"] = user["full_name"]
+        session["role"] = user["role"]
 
-        return "Invalid username or password"
+
+        if user["role"] == "admin":
+            return redirect(url_for("admin_dashboard"))
+        else:
+            return redirect(url_for("student_dashboard"))
 
     return render_template("login.html")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
 
     if request.method == "POST":
 
-        username = request.form["username"]
-        email = request.form["email"]
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+        role = request.form.get("role", "").strip()
 
-        password = request.form["password"]
-        confirm_password = request.form["confirm_password"]
+        if not username or not email or not password or not confirm_password or not role:
+            flash("All fields are required!")
+            return redirect(url_for("register"))
 
-        role = request.form["role"]
+        if not validate_name(username):
+            flash("Name must be at least 3 characters and only letters.")
+            return redirect(url_for("register"))
+
+        if not validate_email(email):
+            flash("Invalid email format.")
+            return redirect(url_for("register"))
+
+        if not validate_password(password):
+            flash("Password must be at least 6 characters with letters and numbers.")
+            return redirect(url_for("register"))
 
         if password != confirm_password:
-            return "Passwords do not match"
+            flash("Passwords do not match.")
+            return redirect(url_for("register"))
 
-        hashed_password = generate_password_hash(password)
+        if role not in ["student", "admin"]:
+            flash("Invalid role selected.")
+            return redirect(url_for("register"))
 
         conn = get_db_connection()
 
-        conn.execute(
-            "INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)",
-            (username, email, hashed_password, role)
-        )
+        existing_user = conn.execute(
+            "SELECT * FROM users WHERE email=?",
+            (email,)
+        ).fetchone()
 
-        conn.commit()
-        conn.close()
+        existing_request = conn.execute(
+            "SELECT * FROM admin_requests WHERE email=?",
+            (email,)
+        ).fetchone()
 
-        return redirect("/login")
-    flash("Enrollment request submitted successfully!")
+        if existing_user or existing_request:
+            conn.close()
+            flash("Email already exists or request already submitted.")
+            return redirect(url_for("register"))
+
+        hashed_password = generate_password_hash(password)
+
+        if role == "admin":
+
+            conn.execute("""
+                INSERT INTO admin_requests (full_name, email, password)
+                VALUES (?, ?, ?)
+            """, (username, email, hashed_password))
+
+            conn.commit()
+            conn.close()
+
+            flash("Admin request sent to developer for approval!")
+            return redirect(url_for("login"))
+
+        else:  # student
+
+            conn.execute("""
+                INSERT INTO users (full_name, email, password, role)
+                VALUES (?, ?, ?, 'student')
+            """, (username, email, hashed_password))
+
+            conn.commit()
+            conn.close()
+
+            flash("Registration successful!")
+            return redirect(url_for("login"))
+
     return render_template("register.html")
 
 @app.route("/student")
@@ -275,7 +351,6 @@ def drop_course(enrollment_id):
 
     conn = get_db_connection()
 
-    # Get semester for deadline check
     data = conn.execute("""
         SELECT co.semester_id
         FROM enrollment_requests er
@@ -295,7 +370,6 @@ def drop_course(enrollment_id):
         flash("Drop deadline has passed.")
         return redirect(url_for("my_courses"))
 
-    # Delete enrollment (drop)
     conn.execute("""
         DELETE FROM enrollment_requests
         WHERE id = ?
@@ -370,21 +444,52 @@ def add_course():
 
     if request.method == "POST":
 
-        course_code = request.form["course_code"]
-        course_title = request.form["course_title"]
-        course_description = request.form["course_description"]
-        credit_hours = request.form["credit_hours"]
+        course_code = request.form.get("course_code", "").strip()
+        course_title = request.form.get("course_title", "").strip()
+        course_description = request.form.get("course_description", "").strip()
+        credit_hours = request.form.get("credit_hours", "").strip()
+
+        if not course_code or not course_title or not credit_hours:
+            flash("All fields except description are required!")
+            return redirect(url_for("add_course"))
+
+        if not validate_course_code(course_code):
+            flash("Invalid course code (min 3 characters)")
+            return redirect(url_for("add_course"))
+
+        if len(course_title) < 3:
+            flash("Course title must be at least 3 characters")
+            return redirect(url_for("add_course"))
+
+        if not validate_credit_hours(credit_hours):
+            flash("Credit hours must be between 1 and 6")
+            return redirect(url_for("add_course"))
 
         conn = get_db_connection()
 
+        existing = conn.execute(
+            "SELECT * FROM courses WHERE course_code = ?",
+            (course_code,)
+        ).fetchone()
+
+        if existing:
+            conn.close()
+            flash("Course with this code already exists!")
+            return redirect(url_for("add_course"))
+
         conn.execute(
-            "INSERT INTO courses (course_code, course_title, course_description, credit_hours) VALUES (?, ?, ?, ?)",
-            (course_code, course_title, course_description, credit_hours)
+            """
+            INSERT INTO courses 
+            (course_code, course_title, course_description, credit_hours) 
+            VALUES (?, ?, ?, ?)
+            """,
+            (course_code, course_title, course_description, int(credit_hours))
         )
 
         conn.commit()
         conn.close()
 
+        flash("Course added successfully!")
         return redirect(url_for("manage_courses"))
 
     return render_template("add_course.html")
@@ -705,14 +810,32 @@ def add_seat_limit():
 
     return render_template("add_seat_limit.html", offerings=offerings)
 
-@app.route("/insert_seat_limit/<int:id>", methods=["POST"])
+@app.route("/set_seat_limit/<int:id>", methods=["POST"])
 @login_required
 @role_required("admin")
-def insert_seat_limit(id):
+def set_seat_limit(id):
 
-    max_seats = request.form["max_seats"]
+    max_seats = request.form.get("max_seats", "").strip()
+
+    try:
+        max_seats = int(max_seats)
+        if max_seats <= 0 or max_seats > 500:
+            raise ValueError
+    except:
+        flash("Seat must be a number between 1 and 500")
+        return redirect(url_for("add_seat_limit"))
 
     conn = get_db_connection()
+
+    offering = conn.execute(
+        "SELECT * FROM course_offerings WHERE id = ?",
+        (id,)
+    ).fetchone()
+
+    if not offering:
+        conn.close()
+        flash("Invalid course offering!")
+        return redirect(url_for("add_seat_limit"))
 
     conn.execute(
         "UPDATE course_offerings SET max_seats = ? WHERE id = ?",
@@ -722,30 +845,9 @@ def insert_seat_limit(id):
     conn.commit()
     conn.close()
 
-    flash("Maximum seat limit added successfully!")
-
+    flash("Seat limit saved successfully!")
     return redirect(url_for("add_seat_limit"))
 
-@app.route("/update_seat_limit/<int:id>", methods=["POST"])
-@login_required
-@role_required("admin")
-def update_seat_limit(id):
-
-    max_seats = request.form["max_seats"]
-
-    conn = get_db_connection()
-
-    conn.execute(
-        "UPDATE course_offerings SET max_seats = ? WHERE id = ?",
-        (max_seats, id)
-    )
-
-    conn.commit()
-    conn.close()
-
-    flash("Seat limit updated successfully!")
-
-    return redirect(url_for("add_seat_limit"))
 
 @app.route("/manage_enrollments")
 @login_required
@@ -871,15 +973,43 @@ def manage_deadlines():
 
     if request.method == "POST":
 
-        semester_id = request.form["semester_id"]
-        deadline = request.form["deadline"]
+        semester_id = request.form.get("semester_id")
+        deadline = request.form.get("deadline")
+
+        if not semester_id or not deadline:
+            flash("All fields are required!")
+            return redirect(url_for("manage_deadlines"))
+
+        parsed_date = validate_date(deadline)
+        if not parsed_date:
+            flash("Invalid date format!")
+            return redirect(url_for("manage_deadlines"))
+
+        semester = conn.execute(
+            "SELECT * FROM semesters WHERE id=?",
+            (semester_id,)
+        ).fetchone()
+
+        if not semester:
+            flash("Invalid semester selected!")
+            return redirect(url_for("manage_deadlines"))
+
+        existing = conn.execute(
+            "SELECT * FROM enrollment_deadline WHERE semester_id=?",
+            (semester_id,)
+        ).fetchone()
+
+        if existing:
+            flash("Deadline already exists for this semester!")
+            return redirect(url_for("manage_deadlines"))
 
         conn.execute("""
             INSERT INTO enrollment_deadline (semester_id, deadline_date)
-            VALUES (?,?)
+            VALUES (?, ?)
         """, (semester_id, deadline))
 
         conn.commit()
+        flash("Deadline added successfully!")
 
     deadlines = conn.execute("""
         SELECT ed.id, s.semester_name, ed.deadline_date
@@ -897,7 +1027,7 @@ def manage_deadlines():
         semesters=semesters
     )
 
-@app.route("/delete_deadline/<int:id>")
+@app.route("/delete_deadline/<int:id>", methods=["POST"])
 @login_required
 @role_required("admin")
 def delete_deadline(id):
@@ -912,6 +1042,7 @@ def delete_deadline(id):
     conn.commit()
     conn.close()
 
+    flash("Deadline deleted successfully!")
     return redirect(url_for("manage_deadlines"))
 
 @app.route("/manage_drop_deadlines", methods=["GET", "POST"])
@@ -922,8 +1053,26 @@ def manage_drop_deadlines():
     conn = get_db_connection()
 
     if request.method == "POST":
-        semester_id = request.form["semester_id"]
-        deadline = request.form["deadline"]
+
+        semester_id = request.form.get("semester_id")
+        deadline = request.form.get("deadline")
+
+        if not semester_id or not deadline:
+            flash("All fields are required!")
+            return redirect(url_for("manage_drop_deadlines"))
+
+        if not validate_date(deadline):
+            flash("Invalid date!")
+            return redirect(url_for("manage_drop_deadlines"))
+
+        existing = conn.execute(
+            "SELECT * FROM drop_deadline WHERE semester_id=?",
+            (semester_id,)
+        ).fetchone()
+
+        if existing:
+            flash("Drop deadline already exists!")
+            return redirect(url_for("manage_drop_deadlines"))
 
         conn.execute("""
             INSERT INTO drop_deadline (semester_id, deadline_date)
@@ -931,6 +1080,7 @@ def manage_drop_deadlines():
         """, (semester_id, deadline))
 
         conn.commit()
+        flash("Drop deadline added successfully!")
 
     deadlines = conn.execute("""
         SELECT dd.id, s.semester_name, dd.deadline_date
@@ -948,7 +1098,7 @@ def manage_drop_deadlines():
         semesters=semesters
     )
 
-@app.route("/delete_drop_deadline/<int:id>")
+@app.route("/delete_drop_deadline/<int:id>", methods=["POST"])
 @login_required
 @role_required("admin")
 def delete_drop_deadline(id):
@@ -962,6 +1112,8 @@ def delete_drop_deadline(id):
 
     conn.commit()
     conn.close()
+
+    flash("Drop deadline deleted successfully!")
 
     return redirect(url_for("manage_drop_deadlines"))
 
@@ -1016,6 +1168,126 @@ def enrollment_report():
         student_details=student_details
     )
 
+@app.route("/developer_login", methods=["GET", "POST"])
+def developer_login():
+
+    if request.method == "POST":
+
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+
+        if not username or not password:
+            flash("All fields are required!")
+            return redirect(url_for("developer_login"))
+
+        if len(username) < 3 or len(username) > 50:
+            flash("Invalid username length!")
+            return redirect(url_for("developer_login"))
+
+        if len(password) < 3:
+            flash("Invalid password!")
+            return redirect(url_for("developer_login"))
+
+        conn = get_db_connection()
+
+        dev = conn.execute(
+            "SELECT * FROM developers WHERE username=?",
+            (username,)
+        ).fetchone()
+
+        conn.close()
+
+    
+        if not dev:
+            flash("Invalid credentials!")
+            return redirect(url_for("developer_login"))
+
+        if not check_password_hash(dev["password"], password):
+            flash("Invalid credentials!")
+            return redirect(url_for("developer_login"))
+
+        session.clear()
+        session["developer_id"] = dev["id"]
+        session["developer_name"] = dev["username"]
+        session["role"] = "developer"
+
+        return redirect(url_for("developer_dashboard"))
+
+    return render_template("developer_login.html")
+
+@app.route("/developer_dashboard")
+@developer_required
+def developer_dashboard():
+
+    if "developer_id" not in session:
+        return redirect(url_for("developer_login"))
+
+    conn = get_db_connection()
+
+    requests = conn.execute("""
+        SELECT * FROM admin_requests
+        WHERE status='pending'
+        ORDER BY request_date DESC
+    """).fetchall()
+
+    conn.close()
+
+    return render_template("developer_dashboard.html", requests=requests)
+
+@app.route("/approve_admin/<int:id>")
+@developer_required
+def approve_admin(id):
+
+    if "developer_id" not in session:
+        return redirect(url_for("developer_login"))
+
+    conn = get_db_connection()
+
+    req = conn.execute(
+        "SELECT * FROM admin_requests WHERE id=? AND status='pending'",
+        (id,)
+    ).fetchone()
+
+    if not req:
+        conn.close()
+        flash("Invalid request!")
+        return redirect(url_for("developer_dashboard"))
+
+    conn.execute("""
+        INSERT INTO users (full_name, email, password, role)
+        VALUES (?, ?, ?, 'admin')
+    """, (req["full_name"], req["email"], req["password"]))
+
+    conn.execute(
+        "UPDATE admin_requests SET status='approved' WHERE id=?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    flash("Admin approved!")
+    return redirect(url_for("developer_dashboard"))
+
+@app.route("/reject_admin/<int:id>")
+@developer_required
+def reject_admin(id):
+
+    if "developer_id" not in session:
+        return redirect(url_for("developer_login"))
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "UPDATE admin_requests SET status='rejected' WHERE id=?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    flash("Request rejected!")
+    return redirect(url_for("developer_dashboard"))
 
 
 @app.route("/logout")

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+<div class="login-container">
+
+    <h3>Developer Login</h3>
+
+    {% with messages = get_flashed_messages() %}
+        {% for message in messages %}
+            <p style="color:red;">{{ message }}</p>
+        {% endfor %}
+    {% endwith %}
+
+    <form method="POST">
+
+        <label>Username</label>
+        <input type="text" name="username" placeholder="Enter your Username" required>
+
+        <label>Password</label>
+        <input type="password" name="password" placeholder="Enter your Password" required>
+
+        <button type="submit">Login</button>
+
+    </form>
+
+</div>
+
+{% endblock %}

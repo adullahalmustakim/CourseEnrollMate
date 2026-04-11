@@ -3,36 +3,36 @@
 {% block body %}
 
 <div class="table-container">
-<h2>My Enrolled Courses</h2>
+    <h2>My Enrolled Courses</h2>
 
-<table>
-<thead>
-<tr>
-<th>Course Code</th>
-<th>Course Title</th>
-<th>Semester</th>
-<th>Action</th>
-</tr>
-</thead>
-{% for c in courses %}
-<tbody>
-<td>{{ c.course_code }}</td>
-<td>{{ c.course_title }}</td>
-<td>{{ c.semester_name }}</td>
+    <table>
+        <thead>
+            <tr>
+            <th>Course Code</th>
+            <th>Course Title</th>
+            <th>Semester</th>
+            <th>Action</th>
+            </tr>
+        </thead>
+    {% for c in courses %}
+        <tbody>
+            <tr>
+            <td>{{ c.course_code }}</td>
+            <td>{{ c.course_title }}</td>
+            <td>{{ c.semester_name }}</td>
 
-<td>
-    {% if c.drop_allowed %}
-        <a href="/drop_course/{{ c.enrollment_id }}">Drop</a>
-    {% else %}
-        <button disabled>Deadline Passed</button>
-    {% endif %}
-</td>
+            <td>
+                {% if c.drop_allowed %}
+                    <a href="/drop_course/{{ c.enrollment_id }}">Drop</a>
+                {% else %}
+                    <button disabled>Deadline Passed</button>
+                {% endif %}
+            </td>
 
-</tr>
-</tbody>
-<tr>
-{% endfor %}
+            </tr>
+        </tbody>
+    {% endfor %}
 
-</table>
+    </table>
 </div>
 {% endblock %}

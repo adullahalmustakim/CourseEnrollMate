@@ -6,41 +6,84 @@
     <title>CourseEnrollMate</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-    <header class="site-header">
-        <div class="left">
-            <img src="{{ url_for('static', filename='logo.png') }}" class="logo">
-            <h1>CourseEnrollMate</h1>
+    <body>
+        <header class="site-header">
+            <div class="left">
+                <img src="{{ url_for('static', filename='logo.png') }}" class="logo">
+                <h1>CourseEnrollMate</h1>
+            </div>
+
+            {% if is_home %}
+
+                <div class="nav-links">
+                    <a href="/developer_login" class="top-btn">Developer Options</a>
+
+                </div>
+
+            {% elif "username" in session %}
+
+                <div class="nav-links">
+
+                    {% if session["role"] == "admin" %}
+                        <a href="{{ url_for('admin_dashboard') }}" class="top-btn">Dashboard</a>
+                    {% elif session["role"] == "student" %}
+                        <a href="{{ url_for('student_dashboard') }}" class="top-btn">Dashboard</a>
+                    {% endif %}
+
+                    <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+
+                </div>
+
+            {% elif "developer_id" in session %}
+
+                <div class="nav-links">
+
+                    <a href="{{ url_for('developer_dashboard') }}" class="top-btn">Dashboard</a>
+                    <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+
+                </div>
+
+            {% endif %}
+        </header>
+
+        <div class="main-container">
+
+            {% if "username" in session %}
+            <div class="sidebar">
+
+                {% if session["role"] == "admin" %}
+
+                    <a href="/manage_courses">Manage Courses</a>
+                    <a href="/manage_credit_hours">Manage Credit Hours</a>
+                    <a href="/manage_prerequisites">Manage Prerequisites</a>
+                    <a href="/manage_semesters">Manage Semesters</a>
+                    <a href="/manage_course_offerings">Course Offerings</a>
+                    <a href="/add_seat_limit">Seat Limit</a>
+                    <a href="/manage_enrollments">Enrollments</a>
+                    <a href="/manage_deadlines">Enrollment Deadlines</a>
+                    <a href="/manage_drop_deadlines">Drop Deadlines</a>
+                    <a href="/enrollment_report">Reports</a>
+
+                {% elif session["role"] == "student" %}
+
+                    <a href="/enroll_courses">Enroll Courses</a>
+                    <a href="/rejected_courses">Rejected Courses</a>
+                    <a href="/my_courses">Drop Courses</a>
+                    <a href="/enrolled_courses">My Courses</a>
+
+                {% endif %}
+
+            </div>
+            {% endif %}
+
+            <div class="content">
+                {% block body %}{% endblock %}
+            </div>
+
         </div>
 
-        {% if "username" in session %}
-        <div class="nav-links">
-
-    {% if session["role"] == "admin" %}
-        <a href="{{ url_for('admin_dashboard') }}"
-           style="background-color:#28a745; color:white; text-decoration:none; border-radius:6px; font-weight:bold;">
-           Dashboard
-        </a>
-    {% elif session["role"] == "student" %}
-        <a href="{{ url_for('student_dashboard') }}"
-           style="padding:8px 16px; background-color:#28a745; color:white; text-decoration:none; border-radius:6px; font-weight:bold;">
-           Dashboard
-        </a>
-    {% endif %}
-
-    <a href="{{ url_for('logout') }}"
-       style="background-color:#dc3545; color:white; text-decoration:none; border-radius:6px; font-weight:bold;">
-       Logout
-    </a>
-
-</div>
-    {% endif %}
-    </header>
-    {% block body %}
-
-    {% endblock %}
-    <footer>
-    <p>© 2026 CourseEnrollMate | Developed By 40_D1 | Group 03 </p>
-    </footer>
-</body>
+        <footer>
+            <p>© 2026 CourseEnrollMate | Developed By 40_D1 | Group 03 </p>
+        </footer>
+    </body>
 </html>
